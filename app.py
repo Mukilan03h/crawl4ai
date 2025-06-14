@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 import asyncio
@@ -38,6 +38,24 @@ def format_crawl_result(result: Any) -> Dict:
         ] if result.media else [],
         "error": result.error if not result.success else None
     }
+
+@app.route('/', methods=['GET'])
+def home():
+    """Return a welcome message for the root route."""
+    return jsonify({
+        "message": "Welcome to Crawl4AI API!",
+        "endpoints": {
+            "health": "GET /api/health",
+            "crawl_single": "POST /api/crawl/single",
+            "crawl_multiple": "POST /api/crawl/multiple"
+        },
+        "docs": "Visit https://github.com/unclecode/crawl4ai for more info"
+    }), 200
+
+@app.route('/favicon.ico', methods=['GET'])
+def favicon():
+    """Serve a favicon or return 204 to avoid 404 errors."""
+    return '', 204  # No content, browsers will stop requesting
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

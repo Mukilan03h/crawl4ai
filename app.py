@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from crawl4ai import WebCrawler, CrawlerRunConfig, GeolocationConfig
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, GeolocationConfig
+import asyncio
 import uuid
 import logging
 from typing import List, Dict, Any
@@ -37,6 +38,17 @@ def format_crawl_result(result: Any) -> Dict:
         ] if result.media else [],
         "error": result.error if not result.success else None
     }
+
+# Helper function to run async crawl in sync context
+def run_crawl(url: str, config: CrawlerRunConfig, use_browser: bool) -> Any:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        with AsyncWebCrawler() as crawler:
+            result = loop.run_until_complete(crawler.arun(url=url, config=config, bypass_browser=not use_browser))
+        return result
+    finally:
+        loop.close()
 
 @app.route('/', methods=['GET'])
 def home():
@@ -75,7 +87,7 @@ def crawl_single():
 
         # Extract optional configurations
         config = data.get("config", {})
-        use_browser = config.get("use_browser", False)  # Toggle browser-based crawling
+        use_browser = config.get("use_browser", False)
         crawl_config = CrawlerRunConfig(
             locale=config.get("locale", "en-US"),
             timezone_id=config.get("timezone_id", "America/Los_Angeles") if use_browser else None,
@@ -94,12 +106,11 @@ def crawl_single():
         )
 
         logger.info(f"Crawling URL: {url}, Browser: {use_browser}")
-        with WebCrawler() as crawler:
-            result = crawler.run(url=url, config=crawl_config, bypass_browser=not use_browser)
-            return jsonify({
-                "task_id": str(uuid.uuid4()),
-                "result": format_crawl_result(result)
-            }), 200
+        result = run_crawl(url, crawl_config, use_browser)
+        return jsonify({
+            "task_id": str(uuid.uuid4()),
+            "result": format_crawl_result(result)
+        }), 200
 
     except Exception as e:
         logger.error(f"Error in crawl_single: {str(e)}", exc_info=True)
@@ -123,29 +134,28 @@ def crawl_multiple():
             return jsonify({"error": "Configs array must match URLs array length"}), 400
 
         results = []
-        with WebCrawler() as crawler:
-            for i, url in enumerate(urls):
-                config = configs[i] if isinstance(configs, list) else configs
-                use_browser = config.get("use_browser", False)
-                crawl_config = CrawlerRunConfig(
-                    locale=config.get("locale", "en-US"),
-                    timezone_id=config.get("timezone_id", "America/Los_Angeles") if use_browser else None,
-                    geolocation=GeolocationConfig(
-                        latitude=config.get("geolocation", {}).get("latitude", 34.0522),
-                        longitude=config.get("geolocation", {}).get("longitude", -118.2437),
-                        accuracy=config.get("geolocation", {}).get("accuracy", 10.0)
-                    ) if use_browser and config.get("geolocation") else None,
-                    table_score_threshold=config.get("table_score_threshold", 8),
-                    capture_network=config.get("capture_network", False),
-                    capture_console=config.get("capture_console", False) if use_browser else None,
-                    mhtml=config.get("mhtml", False) if use_browser else None,
-                    max_pages=config.get("max_pages", 1),
-                    deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None,
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                )
-                logger.info(f"Crawling URL: {url}, Browser: {use_browser}")
-                result = crawler.run(url=url, config=crawl_config, bypass_browser=not use_browser)
-                results.append(format_crawl_result(result))
+        for i, url in enumerate(urls):
+            config = configs[i] if isinstance(configs, list) else configs
+            use_browser = config.get("use_browser", False)
+            crawl_config = CrawlerRunConfig(
+                locale=config.get("locale", "en-US"),
+                timezone_id=config.get("timezone_id", "America/Los_Angeles") if use_browser else None,
+                geolocation=GeolocationConfig(
+                    latitude=config.get("geolocation", {}).get("latitude", 34.0522),
+                    longitude=config.get("geolocation", {}).get("longitude", -118.2437),
+                    accuracy=config.get("geolocation", {}).get("accuracy", 10.0)
+                ) if use_browser and config.get("geolocation") else None,
+                table_score_threshold=config.get("table_score_threshold", 8),
+                capture_network=config.get("capture_network", False),
+                capture_console=config.get("capture_console", False) if use_browser else None,
+                mhtml=config.get("mhtml", False) if use_browser else None,
+                max_pages=config.get("max_pages", 1),
+                deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None,
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+            logger.info(f"Crawling URL: {url}, Browser: {use_browser}")
+            result = run_crawl(url, crawl_config, use_browser)
+            results.append(format_crawl_result(result))
 
         return jsonify({
             "task_id": str(uuid.uuid4()),

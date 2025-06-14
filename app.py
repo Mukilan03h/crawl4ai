@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, GeolocationConfig
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 import asyncio
 import uuid
 import logging
@@ -47,6 +47,9 @@ def run_crawl(url: str, config: CrawlerRunConfig, use_browser: bool) -> Any:
         with AsyncWebCrawler() as crawler:
             result = loop.run_until_complete(crawler.arun(url=url, config=config, bypass_browser=not use_browser))
         return result
+    except Exception as e:
+        logger.error(f"Crawl error: {str(e)}", exc_info=True)
+        raise
     finally:
         loop.close()
 
@@ -90,19 +93,9 @@ def crawl_single():
         use_browser = config.get("use_browser", False)
         crawl_config = CrawlerRunConfig(
             locale=config.get("locale", "en-US"),
-            timezone_id=config.get("timezone_id", "America/Los_Angeles") if use_browser else None,
-            geolocation=GeolocationConfig(
-                latitude=config.get("geolocation", {}).get("latitude", 34.0522),
-                longitude=config.get("geolocation", {}).get("longitude", -118.2437),
-                accuracy=config.get("geolocation", {}).get("accuracy", 10.0)
-            ) if use_browser and config.get("geolocation") else None,
             table_score_threshold=config.get("table_score_threshold", 8),
-            capture_network=config.get("capture_network", False),
-            capture_console=config.get("capture_console", False) if use_browser else None,
-            mhtml=config.get("mhtml", False) if use_browser else None,
             max_pages=config.get("max_pages", 1),
-            deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None
         )
 
         logger.info(f"Crawling URL: {url}, Browser: {use_browser}")
@@ -139,19 +132,9 @@ def crawl_multiple():
             use_browser = config.get("use_browser", False)
             crawl_config = CrawlerRunConfig(
                 locale=config.get("locale", "en-US"),
-                timezone_id=config.get("timezone_id", "America/Los_Angeles") if use_browser else None,
-                geolocation=GeolocationConfig(
-                    latitude=config.get("geolocation", {}).get("latitude", 34.0522),
-                    longitude=config.get("geolocation", {}).get("longitude", -118.2437),
-                    accuracy=config.get("geolocation", {}).get("accuracy", 10.0)
-                ) if use_browser and config.get("geolocation") else None,
                 table_score_threshold=config.get("table_score_threshold", 8),
-                capture_network=config.get("capture_network", False),
-                capture_console=config.get("capture_console", False) if use_browser else None,
-                mhtml=config.get("mhtml", False) if use_browser else None,
                 max_pages=config.get("max_pages", 1),
-                deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None
             )
             logger.info(f"Crawling URL: {url}, Browser: {use_browser}")
             result = run_crawl(url, crawl_config, use_browser)

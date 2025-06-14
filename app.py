@@ -44,8 +44,8 @@ def run_crawl(url: str, config: CrawlerRunConfig, use_browser: bool) -> Any:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        with AsyncWebCrawler() as crawler:
-            result = loop.run_until_complete(crawler.arun(url=url, config=config, bypass_browser=not use_browser))
+        crawler = AsyncWebCrawler()
+        result = loop.run_until_complete(crawler.arun(url=url, config=config, bypass_browser=not use_browser))
         return result
     except Exception as e:
         logger.error(f"Crawl error: {str(e)}", exc_info=True)

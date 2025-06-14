@@ -94,7 +94,7 @@ def crawl_single():
         crawl_config = CrawlerRunConfig(
             locale=config.get("locale", "en-US"),
             table_score_threshold=config.get("table_score_threshold", 8),
-            max_pages=config.get("max_pages", 1),
+            max_range=config.get("max_range", 1),
             deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None
         )
 
@@ -133,7 +133,7 @@ def crawl_multiple():
             crawl_config = CrawlerRunConfig(
                 locale=config.get("locale", "en-US"),
                 table_score_threshold=config.get("table_score_threshold", 8),
-                max_pages=config.get("max_pages", 1),
+                max_range=config.get("max_range", 1),
                 deep_crawl_strategy=config.get("deep_crawl_strategy", "bfs") if config.get("deep_crawl", False) else None
             )
             logger.info(f"Crawling URL: {url}, Browser: {use_browser}")

@@ -1,4 +1,6 @@
-flask
+flask 
 flask-cors
 crawl4ai
 gunicorn
+playwright 
+requests

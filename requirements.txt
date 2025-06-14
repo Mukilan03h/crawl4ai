@@ -1,0 +1,5 @@
+flask
+flask-cors 
+crawl4ai 
+pandas 
+gunicorn

@@ -1,5 +1,4 @@
 flask
-flask-cors 
-crawl4ai 
-pandas 
+flask-cors
+crawl4ai
 gunicorn
